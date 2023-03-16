@@ -5,6 +5,9 @@ compatibility_date = "2023-03-16"
 
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "dmarc-reports"         # Set this to your R2 bucket name. Required
-preview_bucket_name = "dmarc-reports" # Set this to your preview R2 bucket name. Can be equal to bucket_name. Optional
+bucket_name = "dmarc-reports-open"         # Set this to your R2 bucket name. Required
+preview_bucket_name = "dmarc-reports-open" # Set this to your preview R2 bucket name. Can be equal to bucket_name. Optional
 
+analytics_engine_datasets = [
+    { binding = "DMARC_ANALYTICS", dataset = "dmarc_reports" }
+]

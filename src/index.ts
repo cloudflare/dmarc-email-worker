@@ -1,13 +1,3 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `wrangler dev src/index.ts` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `wrangler publish src/index.ts --name my-worker` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 import * as PostalMime from 'postal-mime'
 import * as mimeDb from 'mime-db'
 
@@ -24,6 +14,7 @@ export default {
   },
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleEmail(message: EmailMessage, env: Env, ctx: ExecutionContext): Promise<void> {
   const parser = new PostalMime.default()
 
@@ -52,58 +43,44 @@ async function handleEmail(message: EmailMessage, env: Env, ctx: ExecutionContex
   const xmlParser = new XMLParser()
   const report = await xmlParser.parse(reportXML)
 
-  console.log(report)
+  // insert data in analytics
+  env.DMARC_ANALYTICS.writeDataPoint({
+    blobs: ['Seattle', 'USA', 'pro_sensor_9000'],
+    doubles: [25, 0.5],
+    indexes: ['a3cd45'], // Sensor ID
+  })
 }
 
 async function getDMARCReportXML(attachment: Attachment) {
   let xml
   const xmlParser = new XMLParser()
   const extension = mimeDb[attachment.mimeType]?.extensions?.[0] || ''
-  try {
-    switch (extension) {
-      case 'gz':
-        xml = await getXMLFromGz(attachment.content)
-        break
 
-      case 'zip':
-        xml = await getXMLFromZip(attachment.content)
-        break
+  switch (extension) {
+    case 'gz':
+      xml = pako.inflate(new TextEncoder().encode(attachment.content as string), { to: 'string' })
+      break
 
-      case 'xml':
-        xml = await new Response(attachment.content).text()
-        break
+    case 'zip':
+      xml = await getXMLFromZip(attachment.content)
+      break
 
-      default:
-        return
-    }
-  } catch (error) {
-    return error
-  }
+    case 'xml':
+      xml = new Response(attachment.content).text()
+      break
 
-  if (!xml) {
-    return new Error('empty xml')
+    default:
+      throw new Error(`unknown extension: ${extension}`)
   }
 
   return await xmlParser.parse(xml)
 }
 
-async function getXMLFromGz(content: any) {
-  try {
-    return await pako.inflate(content, { to: 'string' })
-  } catch (error) {
-    return error
-  }
-}
-
 async function getXMLFromZip(content: string | ArrayBuffer | Blob | unzipit.TypedArray | unzipit.Reader) {
-  try {
-    const { entries } = await unzipit.unzipRaw(content)
-    if (entries.length === 0) {
-      return new Error('no entries')
-    }
-
-    return await entries[0].text()
-  } catch (error) {
-    return error
+  const { entries } = await unzipit.unzipRaw(content)
+  if (entries.length === 0) {
+    return new Error('no entries in zip')
   }
+
+  return await entries[0].text()
 }
