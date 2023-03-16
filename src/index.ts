@@ -20,7 +20,8 @@ async function handleEmail(message: EmailMessage, env: Env, ctx: ExecutionContex
 
   // parse email content
   const rawEmail = new Response(message.raw)
-  const email = await parser.parse(rawEmail.arrayBuffer())
+
+  const email = await parser.parse(await rawEmail.arrayBuffer())
 
   // get attachment
   if (email.attachments === null || email.attachments.length === 0) {
@@ -37,9 +38,14 @@ async function handleEmail(message: EmailMessage, env: Env, ctx: ExecutionContex
     )
   }
 
-  const reportXML = await getDMARCReportXML(attachment)
+  // get xml
+  const reportJSON = await getDMARCReportXML(attachment)
 
-  await sendToAnalyticsEngine(env, reportXML)
+  // get report
+  const report = getReportRows(reportJSON)
+
+  // send to analytics engine
+  await sendToAnalyticsEngine(env, report)
 }
 
 async function getDMARCReportXML(attachment: Attachment) {
@@ -57,7 +63,7 @@ async function getDMARCReportXML(attachment: Attachment) {
       break
 
     case 'xml':
-      xml = new Response(attachment.content).text()
+      xml = await new Response(attachment.content).text()
       break
 
     default:
@@ -77,7 +83,7 @@ async function getXMLFromZip(content: string | ArrayBuffer | Blob | unzipit.Type
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getReportRows(report: any): Promise<DmarcRecordRow[]> {
+function getReportRows(report: any): DmarcRecordRow[] {
   const reportMetadata = report.feedback.report_metadata
   const policyPublished = report.feedback.policy_published
   const records = Array.isArray(report.feedback.record) ? report.feedback.record : [report.feedback.record]
@@ -128,12 +134,12 @@ async function sendToAnalyticsEngine(env: Env, reportRows: DmarcRecordRow[]) {
     return
   }
 
-  reportRows.forEach((recordRow) => {
+  reportRows.forEach((recordRow, index) => {
     const blobs: string[] = []
     const doubles: number[] = []
     const indexes: string[] = []
 
-    indexes.push(recordRow.reportMetadataOrgName, recordRow.reportMetadataReportId)
+    indexes.push(`${recordRow.reportMetadataReportId}-${index}`)
 
     blobs.push(recordRow.reportMetadataReportId)
     blobs.push(recordRow.reportMetadataOrgName)
