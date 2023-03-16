@@ -8,6 +8,8 @@ binding = "R2_BUCKET"
 bucket_name = "dmarc-reports-open"         # Set this to your R2 bucket name. Required
 preview_bucket_name = "dmarc-reports-open" # Set this to your preview R2 bucket name. Can be equal to bucket_name. Optional
 
-analytics_engine_datasets = [
-    { binding = "DMARC_ANALYTICS", dataset = "dmarc_reports" }
-]
+
+[[analytics_engine_datasets]]
+binding = "DMARC_ANALYTICS"
+dataset = "dmarc_reports"
+
