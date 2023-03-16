@@ -1,0 +1,14 @@
+/target
+/dist
+**/*.rs.bk
+Cargo.lock
+bin/
+pkg/
+wasm-pack.log
+node_modules/
+.cargo-ok
+.env
+.githelp
+.idea/
+
+**/.env
