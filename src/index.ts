@@ -118,7 +118,7 @@ function getReportRows(report: any): DmarcRecordRow[] {
       recordRowPolicyEvaluatedSPF: record.row.policy_evaluated.spf || 'fail',
       recordRowPolicyEvaluatedDisposition: record.row.policy_evaluated.disposition || 'none',
 
-      recordRowPolicyEvaluatedReasonType: record.row.policy_evaluated.reason.type || '',
+      recordRowPolicyEvaluatedReasonType: record.row.policy_evaluated?.reason?.type || '',
       recordIdentifiersEnvelopeTo: record.identifiers.envelope_to || '',
       recordIdentifiersHeaderFrom: record.identifiers.header_from || '',
     }
@@ -139,7 +139,7 @@ async function sendToAnalyticsEngine(env: Env, reportRows: DmarcRecordRow[]) {
     const doubles: number[] = []
     const indexes: string[] = []
 
-    indexes.push(`${recordRow.reportMetadataReportId}-${index}`)
+    indexes.push(encodeURI(`${recordRow.reportMetadataReportId}-${index}`).slice(0, 32)) // max size 32 bytes
 
     blobs.push(recordRow.reportMetadataReportId)
     blobs.push(recordRow.reportMetadataOrgName)
