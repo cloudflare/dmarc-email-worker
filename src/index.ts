@@ -6,7 +6,15 @@ import * as pako from 'pako'
 
 import { XMLParser } from 'fast-xml-parser'
 
-import { Env, Attachment, DmarcRecordRow } from './types'
+import {
+  Env,
+  Attachment,
+  DmarcRecordRow,
+  AlignmentType,
+  DispositionType,
+  DMARCResultType,
+  PolicyOverrideType,
+} from './types'
 
 export default {
   async email(message: EmailMessage, env: Env, ctx: ExecutionContext): Promise<void> {
@@ -105,20 +113,22 @@ function getReportRows(report: any): DmarcRecordRow[] {
       reportMetadataError: JSON.stringify(reportMetadata.error) || '',
 
       policyPublishedDomain: policyPublished.domain || '',
-      policyPublishedADKIM: policyPublished.adkim || 'r',
-      policyPublishedASPF: policyPublished.aspf || 'r',
-      policyPublishedP: policyPublished.p || 'none',
-      policyPublishedSP: policyPublished.sp || 'none',
+      policyPublishedADKIM: AlignmentType[policyPublished.adkim as keyof typeof AlignmentType],
+      policyPublishedASPF: AlignmentType[policyPublished.aspf as keyof typeof AlignmentType],
+      policyPublishedP: DispositionType[policyPublished.p as keyof typeof DispositionType],
+      policyPublishedSP: DispositionType[policyPublished.sp as keyof typeof DispositionType],
       policyPublishedPct: parseInt(policyPublished.pct) || 0,
 
       recordRowSourceIP: record.row.source_ip || '',
 
       recordRowCount: parseInt(record.row.count) || 0,
-      recordRowPolicyEvaluatedDKIM: record.row.policy_evaluated.dkim || 'fail',
-      recordRowPolicyEvaluatedSPF: record.row.policy_evaluated.spf || 'fail',
-      recordRowPolicyEvaluatedDisposition: record.row.policy_evaluated.disposition || 'none',
+      recordRowPolicyEvaluatedDKIM: DMARCResultType[record.row.policy_evaluated.dkim as keyof typeof DMARCResultType],
+      recordRowPolicyEvaluatedSPF: DMARCResultType[record.row.policy_evaluated.spf as keyof typeof DMARCResultType],
+      recordRowPolicyEvaluatedDisposition:
+        DispositionType[record.row.policy_evaluated.disposition as keyof typeof DispositionType],
 
-      recordRowPolicyEvaluatedReasonType: record.row.policy_evaluated?.reason?.type || '',
+      recordRowPolicyEvaluatedReasonType:
+        PolicyOverrideType[record.row.policy_evaluated?.reason?.type as keyof typeof PolicyOverrideType],
       recordIdentifiersEnvelopeTo: record.identifiers.envelope_to || '',
       recordIdentifiersHeaderFrom: record.identifiers.header_from || '',
     }
