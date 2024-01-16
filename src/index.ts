@@ -1,9 +1,7 @@
 import * as PostalMime from 'postal-mime'
 import * as mimeDb from 'mime-db'
 
-import * as unzipit from 'unzipit'
-import * as pako from 'pako'
-
+import { decompressSync, unzipSync, strFromU8 } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
 import {
@@ -17,13 +15,13 @@ import {
 } from './types'
 
 export default {
-  async email(message: EmailMessage, env: Env, ctx: ExecutionContext): Promise<void> {
+  async email(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext): Promise<void> {
     await handleEmail(message, env, ctx)
   },
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function handleEmail(message: EmailMessage, env: Env, ctx: ExecutionContext): Promise<void> {
+async function handleEmail(message: ForwardableEmailMessage, env: Env, ctx: ExecutionContext): Promise<void> {
   const parser = new PostalMime.default()
 
   // parse email content
@@ -58,36 +56,34 @@ async function handleEmail(message: EmailMessage, env: Env, ctx: ExecutionContex
 
 async function getDMARCReportXML(attachment: Attachment) {
   let xml
+
   const xmlParser = new XMLParser()
   const extension = mimeDb[attachment.mimeType]?.extensions?.[0] || ''
 
-  switch (extension) {
-    case 'gz':
-      xml = pako.inflate(new TextEncoder().encode(attachment.content as string), { to: 'string' })
-      break
+  if (extension === 'gz') {
+    const attachmentDecompressed = decompressSync(new Uint8Array(attachment.content))
+    xml = strFromU8(attachmentDecompressed)
+  }
 
-    case 'zip':
-      xml = await getXMLFromZip(attachment.content)
-      break
+  if (extension === 'zip') {
+    const attachmentsUnzipped = Object.values(unzipSync(new Uint8Array(attachment.content)))
 
-    case 'xml':
-      xml = await new Response(attachment.content).text()
-      break
+    if (attachmentsUnzipped.length === 0) {
+      throw new Error('Empty zip archive')
+    }
 
-    default:
-      throw new Error(`unknown extension: ${extension}`)
+    xml = strFromU8(attachmentsUnzipped[0])
+  }
+
+  if (extension === 'xml') {
+    xml = await new Response(attachment.content).text()
+  }
+
+  if (!xml) {
+    throw new Error(`Invalid attachment or unknown extension: ${extension}`)
   }
 
   return await xmlParser.parse(xml)
-}
-
-async function getXMLFromZip(content: string | ArrayBuffer | Blob | unzipit.TypedArray | unzipit.Reader) {
-  const { entries } = await unzipit.unzipRaw(content)
-  if (entries.length === 0) {
-    return new Error('no entries in zip')
-  }
-
-  return await entries[0].text()
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
