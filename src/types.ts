@@ -16,7 +16,7 @@ export type Attachment = {
   disposition: 'attachment' | 'inline' | null
   related?: boolean
   contentId?: string
-  content: string
+  content: ArrayBuffer
 }
 
 export type Email = {
